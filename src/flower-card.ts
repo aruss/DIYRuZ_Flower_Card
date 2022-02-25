@@ -1,13 +1,5 @@
 import { mdiWater } from '@mdi/js';
-import {
-  ActionHandlerEvent,
-  getLovelace,
-  handleAction,
-  hasAction,
-  hasConfigOrEntityChanged,
-  HomeAssistant,
-  LovelaceCardEditor,
-} from 'custom-card-helpers';
+import { ActionHandlerEvent, handleAction, hasAction, hasConfigOrEntityChanged, HomeAssistant, LovelaceCardEditor } from 'custom-card-helpers';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { css, CSSResultGroup, html, LitElement, PropertyValues, TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators';
@@ -70,10 +62,6 @@ export class FlowerCard extends LitElement {
       throw new Error('"entity_soil_moisture" must be specified');
     }
 
-    if (config.test_gui) {
-      getLovelace().setEditMode(true);
-    }
-
     this.config = {
       /* ... default config here  */
       ...config,
@@ -97,6 +85,8 @@ export class FlowerCard extends LitElement {
 
     const infoSoilMoisture = this.getEntityInfo(this.config.entity_soil_moisture);
 
+    console.log(infoSoilMoisture.stateObj);
+
     if (infoSoilMoisture.errorResult) {
       return infoSoilMoisture.errorResult;
     }
@@ -115,9 +105,9 @@ export class FlowerCard extends LitElement {
       >
         <div class="bgimage" style="background-image:url('${this.config.image}')"></div>
         <span class="overlay_value">
-          <ha-svg-icon .path=${mdiWater}></ha-svg-icon><span class="value">${infoSoilMoisture.stateValue}</span><span class="unit">%</span>
+          <ha-svg-icon .path=${mdiWater}></ha-svg-icon><span class="value">${infoSoilMoisture.stateValue}</span
+          ><span class="unit">%</span>
         </span>
-        
       </ha-card>
     `;
   }
@@ -179,10 +169,7 @@ export class FlowerCard extends LitElement {
   // https://lit.dev/docs/components/styles/
   static get styles(): CSSResultGroup {
     return css`
-      :host {
-        
-      }
-
+      :host {}
     
       .flower-card {
         overflow: hidden; 
@@ -229,10 +216,7 @@ export class FlowerCard extends LitElement {
 
       :host([narrow]) .overlay_value > .value  {
         font-size: 26px;
-
-      }
-
-      
+      }      
     `;
   }
 }

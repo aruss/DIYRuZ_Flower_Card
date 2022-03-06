@@ -1,10 +1,15 @@
-import { mdiWater } from '@mdi/js';
+import { mdiBattery, mdiWater, mdiWifiAlert } from '@mdi/js';
 import { ActionHandlerEvent, handleAction, hasAction, hasConfigOrEntityChanged, HomeAssistant, LovelaceCardEditor } from 'custom-card-helpers';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { css, CSSResultGroup, html, LitElement, PropertyValues, TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators';
 
 // This is a community maintained npm module with common helper functions/types. https://github.com/custom-cards/custom-card-helpers
+
+/*
+https://en.wikipedia.org/wiki/Step_detection
+https://developers.home-assistant.io/
+*/
 
 import './editor';
 
@@ -17,13 +22,12 @@ import { HassEntity, STATE_NOT_RUNNING } from 'home-assistant-js-websocket';
 interface EntityInfo {
   errorResult?: TemplateResult;
   stateObj?: HassEntity;
-  stateValue?: number;
   entityId?: string;
 }
 
 /* eslint no-console: 0 */
 console.info(
-  `%c  FLOWER-CARD \n%c  ${localize('common.version')} ${CARD_VERSION}    `,
+  `%c FLOWER-CARD %c ${CARD_VERSION} `,
   'color: orange; font-weight: bold; background: black',
   'color: white; font-weight: bold; background: dimgray',
 );
@@ -62,6 +66,10 @@ export class FlowerCard extends LitElement {
       throw new Error('"entity_soil_moisture" must be specified');
     }
 
+    if (!config.entity_soil_moisture_since) {
+      throw new Error('"entity_soil_moisture_since" must be specified');
+    }
+
     this.config = {
       /* ... default config here  */
       ...config,
@@ -85,11 +93,23 @@ export class FlowerCard extends LitElement {
 
     const infoSoilMoisture = this.getEntityInfo(this.config.entity_soil_moisture);
 
-    console.log(infoSoilMoisture.stateObj);
-
     if (infoSoilMoisture.errorResult) {
       return infoSoilMoisture.errorResult;
     }
+
+    const wateredSince = this.getEntityInfo(this.config.entity_soil_moisture_since);
+    if (wateredSince.errorResult) {
+      return wateredSince.errorResult;
+    }
+
+    const wateredDays = this.getLastWateredDays(wateredSince.stateObj);
+    const semaphoreClass = this.getSemaphoreClass(wateredDays);
+    const lastSeenMins = this.lastUpdatedMins(infoSoilMoisture.stateObj);
+    const lastSeenProblem = this.lastUpdateProblem(lastSeenMins);
+
+    const errorHtml = lastSeenProblem
+      ? html`<span class="overlay_top"><ha-svg-icon .path=${mdiWifiAlert} class="red"></ha-svg-icon></span>`
+      : html``;
 
     return html`
       <ha-card
@@ -104,12 +124,58 @@ export class FlowerCard extends LitElement {
         .label=${`Flower: ${this.config.entity || 'No Entity Defined'}`}
       >
         <div class="bgimage" style="background-image:url('${this.config.image}')"></div>
-        <span class="overlay_value">
-          <ha-svg-icon .path=${mdiWater}></ha-svg-icon><span class="value">${infoSoilMoisture.stateValue}</span
-          ><span class="unit">%</span>
+        ${errorHtml}
+        <span class="overlay_buttom">
+          <ha-svg-icon .path=${mdiWater} class=${semaphoreClass}></ha-svg-icon>
         </span>
+
+        <!--<pre>
+last watered: ${wateredDays ? wateredDays.toFixed(2) + ' days ago' : 'unknown'} 
+last seen: ${lastSeenMins?.toFixed(0)} min ago
+</pre>-->
       </ha-card>
     `;
+  }
+
+  private lastUpdatedMins(stateObj?: HassEntity): number | undefined {
+    if (!stateObj) {
+      return;
+    }
+
+    return (new Date().getTime() - new Date(stateObj.last_updated).getTime()) / 1000 / 60;
+  }
+
+  private lastUpdateProblem(diffMin?: number): boolean {
+    if (!diffMin) {
+      return false;
+    }
+
+    return diffMin > 30;
+  }
+
+  private getLastWateredDays(stateObj?: HassEntity): number | undefined {
+    if (!stateObj) {
+      return;
+    }
+
+    const value = parseInt(stateObj.state, 10);
+    return value / 60 / 24;
+  }
+
+  private getSemaphoreClass(days: number | undefined): string {
+    if (!days) {
+      return 'unknown';
+    }
+
+    if (days < 3) {
+      return 'green';
+    }
+
+    if (days < 6) {
+      return 'yellow';
+    }
+
+    return 'red';
   }
 
   private getEntityInfo(entityId: string): EntityInfo {
@@ -138,25 +204,9 @@ export class FlowerCard extends LitElement {
       };
     }
 
-    const stateValue = Number(stateObj.state);
-
-    if (isNaN(stateValue)) {
-      return {
-        entityId,
-        stateObj,
-        stateValue,
-        errorResult: html`
-          <hui-warning
-            >${this.hass.localize('ui.panel.lovelace.warning.entity_non_numeric', 'entity', entityId)}</hui-warning
-          >
-        `,
-      };
-    }
-
     return {
       entityId,
       stateObj,
-      stateValue,
     };
   }
 
@@ -186,18 +236,41 @@ export class FlowerCard extends LitElement {
         border-bottom-right-radius: 8px; 
       }
 
-      .overlay_value {
+      .overlay_top, .overlay_buttom {
         position: absolute;
-        bottom: 8px;
-        left: 8px;
-        padding: 2px 6px 4px 0px;
+        padding: 4px; 
         background: var( --ha-card-background, var(--card-background-color, white) );
+        color: var(--paper-item-icon-color, #44739e);
         border-radius: var(--ha-card-border-radius, 4px);
       }
 
-      .overlay_value.alert {
-        background: #BB3B31;
-        color: #fff;
+      /*
+      --error-color: #db4437;
+      --warning-color: #ffa600;
+      --success-color: #43a047;
+      --info-color: #039be5;
+      */
+
+      .overlay_buttom {
+        bottom: 8px;
+        left: 8px;
+      }
+
+      .overlay_top {
+        top: 8px;
+        right: 8px;
+      }
+
+      .green {
+        color: var(--success-color, #43a047); 
+      }
+
+      .yellow {
+        color: var(--warning-color, #ffa600); 
+      }
+
+      .red {
+        color: var(--error-color, #db4437); 
       }
 
       .overlay_value > .value {
@@ -216,6 +289,15 @@ export class FlowerCard extends LitElement {
 
       :host([narrow]) .overlay_value > .value  {
         font-size: 26px;
+      }      
+
+      pre {
+        padding: 5px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        margin: 0;
+        color: black;
       }      
     `;
   }

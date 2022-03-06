@@ -14,8 +14,7 @@ export interface FlowerCardConfig extends LovelaceCardConfig {
   image?: string; 
 
   entity_soil_moisture: string; 
-  entity_temperature: string; 
-  entity_illuminance: string; 
-
+  entity_soil_moisture_since: string; 
+  
   tap_action?: ActionConfig;
 }

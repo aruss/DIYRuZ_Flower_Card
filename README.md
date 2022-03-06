@@ -1,5 +1,27 @@
 # Flower by [@iantrich](https://www.github.com/iantrich)
 
+
+
+# https://www.home-assistant.io/integrations/trend/
+binary_sensor:
+  - platform: trend
+    sensors:
+      flower_palme_soil_moisture_state:
+        entity_id: sensor.flower_palme_soil_moisture
+        sample_duration: 7200
+        max_samples: 120
+        min_gradient: 0.0008
+        device_class: moisture
+
+
+
+
+
+
+
+
+
+
 A community driven boilerplate of best practices for Home Assistant Lovelace custom cards
 
 [![GitHub Release][releases-shield]][releases]

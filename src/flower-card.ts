@@ -1,5 +1,12 @@
-import { mdiBattery, mdiWater, mdiWifiAlert } from '@mdi/js';
-import { ActionHandlerEvent, handleAction, hasAction, hasConfigOrEntityChanged, HomeAssistant, LovelaceCardEditor } from 'custom-card-helpers';
+import { mdiWater, mdiWifiAlert } from '@mdi/js';
+import {
+  ActionHandlerEvent,
+  handleAction,
+  hasAction,
+  hasConfigOrEntityChanged,
+  HomeAssistant,
+  LovelaceCardEditor,
+} from 'custom-card-helpers';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { css, CSSResultGroup, html, LitElement, PropertyValues, TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators';
